@@ -20,6 +20,8 @@ export class AvatarPreview {
     this.ok = false;
     this.raf = 0;
     this.pose = opts.pose || 'idle';
+    this.fov = opts.fov || 34;
+    this.focus = opts.focus != null ? opts.focus : 2.5;
     try {
       this.renderer = new Renderer(canvas, { antialias: true, maxDpr: 2 });
       this.ok = true;
@@ -136,13 +138,13 @@ export class AvatarPreview {
     const cp = Math.cos(this.pitch);
     const eye = [
       Math.sin(this.yaw) * cp * this.dist,
-      2.5 + Math.sin(this.pitch) * this.dist,
+      this.focus + Math.sin(this.pitch) * this.dist,
       Math.cos(this.yaw) * cp * this.dist,
     ];
     const camYaw = Math.atan2(-eye[0], -eye[2]) + Math.PI;
     const flat = Math.hypot(eye[0], eye[2]);
-    const camPitch = Math.atan2(2.5 - eye[1], flat);
-    r.setCamera(eye, camYaw, camPitch, 0, 34);
+    const camPitch = Math.atan2(this.focus - eye[1], flat);
+    r.setCamera(eye, camYaw, camPitch, 0, this.fov);
     r.render(dt);
   }
 

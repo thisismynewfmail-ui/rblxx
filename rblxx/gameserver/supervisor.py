@@ -5,6 +5,7 @@ import asyncio
 import json
 import os
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -13,6 +14,34 @@ from .. import config
 from ..netcore.http_server import HttpServer
 from ..security import crypto
 from .worlds import all_worlds
+
+
+def free_port(preferred: int, taken: set[int]) -> int:
+    """First loopback port at or after `preferred` that we can actually bind.
+
+    Lets a second RBLXX instance (a test run, a colleague's copy) come up
+    beside a running one instead of every node dying on EADDRINUSE.
+    """
+    port = preferred
+    for _ in range(400):
+        if port > 65535:
+            break
+        if port in taken:
+            port += 1
+            continue
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Match what asyncio.start_server does, so the probe agrees with
+        # the bind the node will attempt a moment later.
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind((config.NODE_HOST, port))
+        except OSError:
+            port += 1
+            continue
+        finally:
+            sock.close()
+        return port
+    raise RuntimeError(f"no free loopback port near {preferred}")
 
 
 class NodeHandle:
@@ -75,9 +104,12 @@ class NodeHandle:
 class Supervisor:
     def __init__(self):
         self.nodes: dict[str, NodeHandle] = {}
+        taken: set[int] = set()
         for i, world in enumerate(all_worlds()):
             wid = world.meta.id
-            self.nodes[wid] = NodeHandle(wid, config.NODE_PORT_BASE + i, i)
+            port = free_port(config.NODE_PORT_BASE + i, taken)
+            taken.add(port)
+            self.nodes[wid] = NodeHandle(wid, port, i)
         self.running = True
 
     # ------------------------------------------------------------------
@@ -95,6 +127,15 @@ class Supervisor:
             while node.alive and time.time() < deadline:
                 time.sleep(0.05)
             node.kill()
+
+    def rebind(self, node: NodeHandle):
+        """Re-check a dead node's port before respawning it."""
+        taken = {n.port for n in self.nodes.values()
+                 if n is not node and n.alive}
+        try:
+            node.port = free_port(config.NODE_PORT_BASE + node.index, taken)
+        except RuntimeError:
+            pass
 
     def port_for(self, world_id: str) -> int | None:
         node = self.nodes.get(world_id)
@@ -114,6 +155,7 @@ class Supervisor:
                     if time.time() - node.started_at < backoff:
                         continue
                     node.restarts += 1
+                    self.rebind(node)
                     print(f"[supervisor] node '{node.world_id}' died "
                           f"(restart #{node.restarts})")
                     node.spawn()

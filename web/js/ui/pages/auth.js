@@ -21,7 +21,10 @@ export function render(root, params, query) {
 
   const canvas = h('canvas', { style: { width: '100%', height: '100%' } });
   const shell = h('div', { class: 'auth-wrap' },
-    h('div', { class: 'auth-hero' }, canvas),
+    h('div', { class: 'auth-hero' }),
+    h('div', { class: 'auth-stage' }, canvas,
+      h('div', { class: 'auth-stage-cap' },
+        'Every account starts with a blank blockhead. Make it yours.')),
     h('div', { class: 'auth-card panel' }));
   clear(root).appendChild(shell);
 
@@ -35,7 +38,8 @@ export function render(root, params, query) {
                   right_arm: seed[0], left_leg: seed[2], right_leg: seed[2] },
         face: 'smile',
       },
-      sky: 'classic', stage: false, dist: 13, spin: true,
+      sky: 'dawn', stage: true, dist: 15, fov: 34, focus: 2.7,
+      spin: true, pitch: 0.12,
     });
   });
 

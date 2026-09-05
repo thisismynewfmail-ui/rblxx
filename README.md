@@ -112,6 +112,10 @@ browser ──HTTP/WS──> edge (:8972) ──relay──> node crossroads (:8
                           └── SQLite (WAL) ── node fortwars   (:8994)
 ```
 
+Node ports are claimed at boot by probing upward from 8990 (override the base
+with `RBLXX_NODE_PORT_BASE`), so a second instance — a test run, a colleague's
+copy — starts cleanly beside a running one instead of dying on `EADDRINUSE`.
+
 Joining is ticketed: the edge authenticates the session cookie and mints a
 45-second HMAC-signed ticket carrying the player's identity **and their avatar
 bundle**, which the node verifies on the socket handshake. Nodes are bound to
