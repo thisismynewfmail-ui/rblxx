@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RBLXX — Game View</title>
+<link rel="icon" href="/assets/favicon.svg">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/game.css">
+</head>
+<body class="game unlocked">
+
+<canvas id="game"></canvas>
+
+<div id="overlay">
+  <div id="vignette"></div>
+  <div id="lowhp" style="display:none"></div>
+  <div id="damage-dirs"></div>
+  <div id="nameplates"></div>
+
+  <div id="crosshair">
+    <i class="arm t"></i><i class="arm b"></i><i class="arm l"></i><i class="arm r"></i>
+    <i class="dot"></i>
+  </div>
+  <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+
+  <div id="killfeed"></div>
+
+  <div id="mode-hud"></div>
+  <div id="announcements"></div>
+
+  <div id="chat">
+    <div id="chat-log"></div>
+    <div id="chat-input-wrap">
+      <span id="chat-prefix">Say:</span>
+      <input id="chat-input" maxlength="180" autocomplete="off" spellcheck="false">
+      <span id="chat-hint">Enter to send · Esc to cancel</span>
+    </div>
+  </div>
+
+  <div id="effects-strip"></div>
+  <div id="weapon-wheel"></div>
+
+  <div id="hud-bottom">
+    <div class="hud-block vitals">
+      <div class="hpnum" id="hp-num">100</div>
+      <div class="bars">
+        <div class="lblrow"><span>HEALTH</span><span id="hp-label">100 / 100</span></div>
+        <div class="vbar hp"><i id="hp-bar" style="width:100%"></i></div>
+        <div class="vbar armor" id="armor-wrap" style="display:none"><i id="armor-bar" style="width:0%"></i></div>
+      </div>
+    </div>
+    <div class="hud-block ammo">
+      <div>
+        <div class="wname" id="weapon-name">Ranger Rifle</div>
+        <div class="counts">
+          <span class="mag" id="ammo-mag">30</span>
+          <span class="reserve" id="ammo-reserve">/ 180</span>
+        </div>
+        <div class="reloadbar" id="reload-wrap" style="display:none"><i id="reload-bar"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="interact-prompt">
+    <span class="key" id="interact-key">E</span>
+    <span id="interact-label">Interact</span>
+    <span class="cost" id="interact-cost"></span>
+  </div>
+
+  <div id="revive-ring">
+    <svg width="120" height="120">
+      <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,0,0,.5)" stroke-width="7"></circle>
+      <circle id="revive-arc" cx="60" cy="60" r="52" fill="none" stroke="#7cff9e"
+              stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="327" stroke-dashoffset="327"></circle>
+    </svg>
+    <div class="lbl" id="revive-label">DOWNED</div>
+  </div>
+
+  <div id="scoreboard"></div>
+  <div id="votepanel"></div>
+  <div id="round-end"></div>
+
+  <div id="respawn">
+    <div class="died">YOU WERE ELIMINATED</div>
+    <div class="killer" id="respawn-killer"></div>
+    <div class="timer" id="respawn-timer">Respawning in 4.0s</div>
+    <div class="hint">Press Space to respawn when ready · Esc for the menu</div>
+  </div>
+
+  <div id="pause">
+    <div class="pause-card">
+      <div class="pause-head">
+        <h2 id="pause-title">Paused</h2>
+        <span class="wname" id="pause-world"></span>
+        <span class="spacer" style="flex:1"></span>
+        <span class="wname" id="pause-ping"></span>
+      </div>
+      <div class="pause-tabs">
+        <button class="active" data-tab="menu">Menu</button>
+        <button data-tab="settings">Settings</button>
+        <button data-tab="controls">Controls</button>
+        <button data-tab="help">How to play</button>
+      </div>
+      <div class="pause-body" id="pause-body"></div>
+      <div class="pause-actions">
+        <button class="gbtn primary" id="btn-resume">Resume</button>
+        <button class="gbtn" id="btn-profile">My Profile</button>
+        <button class="gbtn danger" id="btn-quit">Quit to Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="perf"></div>
+</div>
+
+<div id="loading">
+  <div class="loader-card">
+    <div class="lname" id="load-name">Loading…</div>
+    <div class="ltag" id="load-tag"></div>
+    <div class="lbar"><i id="load-bar"></i></div>
+    <div class="lstep" id="load-step">Connecting…</div>
+    <div class="ltip" id="load-tip"></div>
+  </div>
+</div>
+
+<script type="module" src="/js/game/main.js"></script>
+</body>
+</html>
