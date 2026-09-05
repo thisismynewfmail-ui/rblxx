@@ -1,0 +1,8 @@
+# RBLXX has no third-party dependencies.
+#
+# The HTTP/1.1 server, the RFC 6455 WebSocket implementation, the game
+# simulation and the WebGL renderer are all written against the Python
+# standard library and the browser platform, so the project installs in zero
+# steps and runs with no network access.
+#
+# Required:  Python 3.10 or newer, and a browser with WebGL.
