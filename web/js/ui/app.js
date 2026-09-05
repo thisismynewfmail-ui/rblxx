@@ -49,6 +49,7 @@ let outlet = null;
 async function mount(pageKey, params, query) {
   if (cleanup) { try { cleanup(); } catch { /* ignore */ } cleanup = null; }
   disposeAllPreviews();
+  renderShell();          // keeps the nav highlight in step with the route
   const mod = await PAGES[pageKey]();
   document.body.classList.toggle('bare', pageKey === 'auth');
   cleanup = await mod.render(outlet, params, query);

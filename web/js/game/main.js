@@ -12,6 +12,7 @@ import { PauseMenu } from './menu.js';
 import { Effects, WEAPON_SKINS } from './effects.js';
 import { modelFor } from './weaponmodels.js';
 import { moveCharacter } from './physics.js';
+import { GameAudio } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
 const TICK = 1 / 30;
@@ -116,6 +117,7 @@ class Game {
 
     this.setLoad(68, 'Connecting to the match…');
     this.input = new InputManager(this.canvas);
+    this.audio = new GameAudio(this.input.settings);
     this.hud = new Hud(null, this.input.settings);
     this.effects = new Effects(this.renderer);
     this.net = new NetClient(this.worldId, ticket);
@@ -154,8 +156,12 @@ class Game {
       if (!this.menu.open && !this.chat.open) input.requestLock();
     });
     this.canvas.addEventListener('click', () => {
+      this.audio.resume();
       if (!this.menu.open && !this.chat.open) input.requestLock();
     });
+    window.addEventListener('keydown', () => this.audio.resume(),
+                            { once: true });
+    input.addEventListener('lockchange', () => this.audio.resume());
 
     input.addEventListener('lockchange', (e) => {
       document.body.classList.toggle('unlocked', !e.detail.locked);
@@ -191,7 +197,7 @@ class Game {
           this.chat.addSystem(this.thirdPerson
             ? 'Camera: third person' : 'Camera: first person');
           break;
-        case 'reload': this.net.reload(); break;
+        case 'reload': this.net.reload(); this.audio.reload(); break;
         case 'slot1': this.selectSlot(0); break;
         case 'slot2': this.selectSlot(1); break;
         case 'slot3': this.selectSlot(2); break;
@@ -233,6 +239,7 @@ class Game {
     if (i < 0 || i >= this.net.weapons.length || i === this.net.slot) return;
     this.net.switchWeapon(i);
     this.net.slot = i;
+    this.audio.swap();
   }
 
   tryInteract() {
@@ -271,6 +278,7 @@ class Game {
     this.hud.setHudScale(s.hudScale);
     this.hud.setCrosshair(s.crosshairColor, s.crosshairStyle);
     this.chat.fade = s.chatFade;
+    this.audio.applySettings();
     $('perf').classList.toggle('show', !!s.showFps);
   }
 
@@ -322,16 +330,21 @@ class Game {
         this.hud.setLastKiller(k.killer, k.weapon);
         this.effects.addShake(0.5);
       }
-      if (k.killer === this.selfName) this.hud.hitMarker(true);
+      if (k.killer === this.selfName) {
+        this.hud.hitMarker(true);
+        this.audio.hitmarker(true);
+      }
     });
 
     net.addEventListener('hit', (e) => {
       this.hud.hitMarker(false);
+      this.audio.hitmarker(false);
     });
 
     net.addEventListener('dmg', (e) => {
       const d = e.detail;
       this.hud.flashDamage();
+      this.audio.hurt(d.a);
       if (this.input.settings.shake) this.effects.addShake(Math.min(0.5, d.a / 90));
       if (d.from) {
         this.hud.damageDirection(d.from,
@@ -341,14 +354,23 @@ class Game {
 
     net.addEventListener('shot', (e) => {
       const remote = net.players.get(e.detail.i);
-      if (remote) remote.muzzleUntil = performance.now() + 60;
+      if (remote) {
+        remote.muzzleUntil = performance.now() + 60;
+        const def = net.config?.weapons?.[e.detail.w];
+        this.audio.shot(def ? def.model : 'rifle',
+                        [remote.render.x, remote.render.y + 4, remote.render.z],
+                        false);
+      }
     });
 
     net.addEventListener('fx', (e) => this.handleFx(e.detail));
 
     net.addEventListener('event', (e) => {
       const ev = e.detail;
-      if (ev.t === 'announce') this.hud.announce(ev.text, ev.kind, ev.ttl);
+      if (ev.t === 'announce') {
+        this.hud.announce(ev.text, ev.kind, ev.ttl);
+        this.audio.announce(ev.kind);
+      }
       else if (ev.t === 'downed') this.chat.addSystem(`${ev.who} is down!`);
       else if (ev.t === 'revived') this.chat.addSystem(`${ev.by} revived ${ev.who}`);
       else if (ev.t === 'bledout') this.chat.addSystem(`${ev.who} bled out.`);
@@ -372,6 +394,7 @@ class Game {
     net.addEventListener('got', (e) => {
       const d = e.detail;
       this.hud.announce(d.label, 'objective', 1.6);
+      this.audio.pickup(d.kind);
     });
     net.addEventListener('interact', (e) => {
       const d = e.detail;
@@ -426,17 +449,26 @@ class Game {
       const hx = fx.p[0] + fx.d[0] * fx.l;
       const hy = fx.p[1] + fx.d[1] * fx.l;
       const hz = fx.p[2] + fx.d[2] * fx.l;
-      if (fx.h === 'wall') this.effects.spark(hx, hy, hz, fx.n, '#ffd98a', 5, 16);
-      else if (fx.h === 'flesh') this.effects.blood(hx, hy, hz);
+      if (fx.h === 'wall') {
+        this.effects.spark(hx, hy, hz, fx.n, '#ffd98a', 5, 16);
+        if (!isMine) this.audio.impact('wall', [hx, hy, hz]);
+      } else if (fx.h === 'flesh') {
+        this.effects.blood(hx, hy, hz);
+        this.audio.impact('flesh', [hx, hy, hz]);
+      }
     } else if (fx.k === 'launch') {
       this.effects.muzzle(fx.p[0], fx.p[1], fx.p[2], fx.d, '#ff8a4c', 1.4);
     } else if (fx.k === 'boom') {
       this.effects.explosion(fx.p[0], fx.p[1], fx.p[2], fx.r || 18);
+      this.audio.explosion(fx.p);
     } else if (fx.k === 'impact') {
       this.effects.spark(fx.p[0], fx.p[1], fx.p[2], [0, 1, 0], '#ffd98a', 10, 18);
     } else if (fx.k === 'bounce') {
       this.effects.spark(fx.p[0], fx.p[1], fx.p[2], [0, 1, 0], '#ff6b5e', 4, 8);
+    } else if (fx.k === 'melee' && fx.target === this.net.myId) {
+      this.audio.hurt(20);
     } else if (fx.k === 'pad' || fx.k === 'launch_pad') {
+      this.audio.launchPad();
       const p = fx.i === this.net.myId
         ? [this.net.state.x, this.net.state.y, this.net.state.z] : null;
       if (p) this.effects.spark(p[0], p[1], p[2], [0, 1, 0], '#8ff0ff', 14, 20);
@@ -543,8 +575,14 @@ class Game {
       const wishZ = cmd.moveZ * cy - cmd.moveX * sy;
       const opts = { wantJump: cmd.jump, speed, jumpPower: jump,
                      gravity: cfg.gravity || 68 };
-      moveCharacter(net.state, this.world.collision, wishX, wishZ, dt, opts);
+      const ev = moveCharacter(net.state, this.world.collision, wishX, wishZ,
+                               dt, opts);
       net.recordPrediction(seq, wishX, wishZ, dt, opts);
+      if (ev.jumped) this.audio.jump();
+      if (ev.landed) this.audio.land(ev.fallDistance);
+      if (net.state.onGround && Math.hypot(net.state.vx, net.state.vz) > 3) {
+        this.audio.footstep(Math.hypot(net.state.vx, net.state.vz));
+      }
     }
 
     // auto fire
@@ -585,6 +623,7 @@ class Game {
     if (this.input.settings.shake) this.effects.addShake(kick * 0.06);
     const m = this.muzzleWorld || [net.state.x, net.state.y + 4, net.state.z];
     this.effects.muzzle(m[0], m[1], m[2], dir, def.tracer, def.model === 'launcher' ? 1.6 : 1);
+    this.audio.shot(def.model, m, true);
   }
 
   aimDirection() {
@@ -641,6 +680,7 @@ class Game {
       camPos = [baseX + right[0] * bobX, baseY + bobY, baseZ + right[2] * bobX];
     }
 
+    this.audio.setListener(camPos, camYaw);
     const shake = s.shake ? this.effects.shakeVec : [0, 0];
     const def = net.weapons[net.slot]
       ? net.config?.weapons?.[net.weapons[net.slot].id] : null;
@@ -745,8 +785,14 @@ class Game {
 
   drawEnemies(dt) {
     const r = this.renderer;
+    const now = performance.now();
     for (const en of this.net.enemies.values()) {
       if (en.x === undefined) continue;
+      if (!en.nextGrowl) en.nextGrowl = now + 1200 + Math.random() * 5000;
+      else if (now > en.nextGrowl) {
+        en.nextGrowl = now + 4000 + Math.random() * 7000;
+        this.audio.zombieGrowl([en.x, en.y + 4, en.z]);
+      }
       const boss = en.kind === 'brute';
       const s = boss ? 1.32 : 1;
       const swing = Math.sin((en.anim || 0)) * 0.7;

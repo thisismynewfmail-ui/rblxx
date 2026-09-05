@@ -150,6 +150,14 @@ there are no image assets to ship or fetch.
 Small thumbnails (friend tiles, catalog icons, post avatars) use a separate 2D
 isometric painter, which keeps WebGL contexts free for the two big previews.
 
+### Audio
+
+Same idea: there are no sound files. `web/js/game/audio.js` synthesises every
+effect with WebAudio — weapon reports shaped per weapon, bullet impacts,
+explosions with a low rumble, hit markers, footsteps, jump and landing thuds,
+pickups, reload clicks, mode stingers and zombie growls — with distance
+attenuation and stereo panning relative to the camera.
+
 ---
 
 ## The website
